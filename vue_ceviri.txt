@@ -1,0 +1,152 @@
+VUE CEVİRİ 
+- yandex translator apisine bağlanan bir çeviri uygulaması
+- terminalden --> vue create vue_ceviri
+
+* template >> tema.html bizim uyg. son halinin html ve css i buradan ilgili kısımları,
+css ve title aldık, ve tema ya baktım ve buradaki iki kısmı iki ayrı component yaptık, SearchForm.vue ve History.vue şeklinde daha sonrada App.vue ya bunları import ettik ve kullandık.
+
+* şimdi bizim uygulamamız şöyle çalışacak, SearchForm içine yazılanı yakalayacak, sonra seçtiğimiz dilde butona tıklayınca çevirecek ve sonucu App.vue de h3 e yazacak daha sonrada History içine kaydedecek
+
+* SearchForm dan yazılan veriyi alalım, textarea dan girilen veriyi alacağız;
+    önce textarea elementi içine v-model="searchText" ekliyoruz, yani buranın değerini searchText e ata
+    daha sonra script e gidip export default içine data(){} ekliyoruz data içine return de searchText girip bunu ... 
+    export Default {
+        data(){
+            return {
+                searchText : ""
+            }
+        }
+    }
+
+    hazırlıyoruz, böylece teaxtare ya yazılan ne varsa o gelip bu data nin return ettiği nesnedeki searchText e işlenecek 
+    artık textare yı alabiliyoruz
+* şimdi artık submit butonu ile translateIt adında bir methodu tetikleyecek
+    elementin içine @submit.prevent = "translateIt"
+    tıklayınca translateIt methodnu çaliştiracak
+    export default a methods ekleyeceğiz içinede translateIt(){} tanımlayacağız
+    methods : {
+      translateIt(){
+          alert(this.searchText)
+      }
+  }
+
+* şimdi artık buradaki textarea daki girileni alabildiğimize göre bunu API ye göndrememiz gerekiyor
+    burada yandex in translate apisinden faydalanacağız
+    https://translate.yandex.com/developers/keys
+    https://tech.yandex.com/translate/doc/dg/reference/translate-docpage/
+    axios kullancağız, bunu projeye ekleyelim, proje dizinine cd ile geçip terminale
+    npm install save axios
+    kurulum bittikten sonra package.json da dependencies tende kontrol edelim, herşey ok,
+    şimdi SearchForm da axios u import edip kullanacağız,
+    import axios from "axios"
+    bunu translateIt içinde kullanacaktık 
+      methods : {
+      translateIt(){
+        //   alert(this.searchText)
+        let url = "https://translate.yandex.net/api/v1.5/tr.json/translate?key=trnsl.1.1.20200216T202741Z.b1db3e1a124036e8.40cabf0d744bc86212f77547f02ceb5c26086076&text=" + this.searchText + "&lang=en";
+axios.get(url)
+    .then(response => {
+        console.log(response)
+    })
+    .catch(err => console.log(err))
+      }
+  },
+
+  şimdi bu çalışıyor default olarak eng e çaviriyor vs.
+
+  * şimdi yapacağımız şey options u doldurmak yani çevirlecek dili şeçebilmek için bunun için created olan life cycle method olan created kullanacağız yani her sayfa oluşturulduğunda bu liste dolacak
+
+    created(){
+      alert("created açlıştı")
+      axios.get("https://translate.yandex.net/api/v1.5/tr.json/getLangs?key=trnsl.1.1.20200216T202741Z.b1db3e1a124036e8.40cabf0d744bc86212f77547f02ceb5c26086076&ui=tr")
+      .then(response => {
+        //   console.log(response)
+          console.log(response.data.langs)
+      })
+  }
+
+  artık tr ye çevrilebilir lang listesini alabiliyoruz, artık bunu option listesine yazdıracağız
+
+  * data içine languages nesnesi oluşturalım ve bunları tek tek oraya pushlayalım burada console.log ile çektiğimiz nesneyi direkt data daki languages e atayacağız yani 
+  this.languages = response.data.langs
+
+* bunu option a yazırabilmek için optiona gidip v-for kullanacağız
+    <option v-for="(lang, key) in languages" :value="key" :key="lang.id">{{lang}}</option>
+
+    languages ten key value çektik (lang ve key) ve bunlardan key i value olarak atadık, lang ı da option a bastık
+
+    artık select ettiğimiz bir elemanın value sunu alabiliriz, şimdi data ya gidip translateTo diye bir deper tanımlayalım ve burada seçim yapınca oraya value yi atasın
+        v-model="translateTo" ile bunuda hallettik 
+* şimdi çevrilecek dil içine de {{languages[translateTo]}} deyince key ine dahip olduğumuz dilin languages içindeki value sinide buraya yazdırdık
+
+* şemdi çevridikten sonra cevabı ekrana yazdırmamız lazım, bu kısım App.vue da ama bizim işlemler SearchForm.vue da yan, componentlert arası veri iletimi lazım, child to parent a iletim custom event ile 
+    translateIt içinden bir event emitleyeceğiz adı translatedEvent olacak bunu değeride response.data.text[0] olacak
+    this.$emit("translatedEvent, response.data.text[0])
+
+    bununla emitledik yani yaydık bunu yaptığımız yuer SearchForm.vue, şimdi bunu App.vue dan yakalamamız lazım
+    App.vue da <SearchForm @translatedEvent="translated($event)"/> içine yakalamak istiyoruz yakalayınca bu ne yapacak? methods tanımlayacağız
+          methods: {
+translated(evx){
+  //alert("emitlenen veriyi yakaladık")
+  alert(evx)
+}
+  },
+
+denememizi yaptık sıkıntı yok
+* şimdi emitlenen veriyi içinden alalım, $event ifadesi reserved dir böyle kullanılacak yani 
+sıkıntı yok
+* şimdi bu veriyi h3 te gösterelim, bir elementin içinde bir şey göstermek istiyorsak bunun için data da tanımlayacağız, şimdilik methodu kaldıralım ve SrachForm içinde js kodu ile işi halledelim
+
+    <SearchForm @translatedEvent="translatedText = $event"/>
+    translatedText  e $event i atadık
+    that's all.
+
+* HISTORY KISMI
+* History.vue içine veri aktaracağız, aktaracağımız veri ne çevrildi, neyden neye çevrildi gibi bilgileri paket olarak bir arrayde tutacağız ve aktaracağız, bu verileri App.vue da tutacağız çünkü her verinin geldiği yer burası buradan child a (History.vue) veri yollamak props ile 
+
+* şimdi bunu translateIt içinden yapalım
+
+    let translatePack = {
+            fromLang : this.languages[response.data.lang.split("-")[0]],
+            toLang : this.languages[this.translateTo],
+            fromText : this.searchText,
+            toText : response.data.text[0]
+        }
+    tanımladık ve emit leyeceğimiz veriyide aşağıodaki şekilde değiştirdik, bunu App.vue da yakalayacağız
+    this.$emit("translatedEvent", translatePack)
+* şimdi App.vue da bu translatePack i tutacağımız bir array e ihtiyacımız var
+
+* şimdi App.vue da emitlenmiş veriyi addHistory($event) ile yakalayacağız ve addHistory diye bir methoıd ekleyeceğiz
+    methods: {
+  addHistory(translatePack){
+    // alert(translatedPack);
+    this.translatedText = translatePack.toText
+    this.history.push(translatePack)
+    console.log(this.history)
+  }
+},
+
+artık her işlem history array ine pushlanıyor
+
+* şimdi bunu History elementine göndereceğiz
+    <History :history = "history"/> bunu tanımladık dedik ki ben buna history ismiyle bir veri yollayacağım, bunu History.vue da kullan 
+    History.vue ya gideceğiz,
+* History içinde export default a props ekleyip bunun history olacağını işaretleyeceğiz
+* ve li içinde v-for ile döneceğiz
+    <li class="list-group-item" v-for="item in history" :key="item.id"> 
+daha sonra 
+    <strong>{{item.fromLang}} => {{item.toLang}}</strong>
+şeklinde gelen array içindeki veriyi ekrana basacağız
+
+* küçük bir style değişimi yaptık, margin-bottom
+
+* şimdi artık sayfayı yeniledik ve history array i boş olduğunda arama geçmişi görünmesin eğer boşsa ... bunu App.vue da yapalım
+     <History :history = "history" v-if="history.length > 0" />
+
+     history nin eleman sayısı > 0 ise bunu göster demek
+
+* son olarak emitten sonra serachText i boşaltalım
+
+
+
+
